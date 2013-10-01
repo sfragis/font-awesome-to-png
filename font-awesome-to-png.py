@@ -420,10 +420,10 @@ def export_icon(icon, size, filename, font, color):
     font = ImageFont.truetype(font, size)
 
     # Determine the dimensions of the icon
-    width,height = draw.textsize(icons[icon], font=font)
+    utf = list(icon.values())[0]
+    width,height = draw.textsize(utf, font=font)
 
-    draw.text(((size - width) / 2, (size - height) / 2), icons[icon],
-            font=font, fill=color)
+    draw.text(((size - width) / 2, (size - height) / 2), utf, font=font, fill=color)
 
     # Get bounding box
     bbox = image.getbbox()
@@ -473,35 +473,41 @@ if args.font:
 
 if args.icon == [ "ALL" ]:
     # Export all icons
-    selected_icons = sorted(icons.keys())
+    selected_icons = icons
 else:
     selected_icons = []
-    
+
     # Icon name was given
     for icon in args.icon:
-        # Strip the "icon-" prefix, if present 
+        # Strip the "icon-" prefix, if present
         if icon.startswith("icon-"):
             icon = icon[5:]
 
-        if icon in icons:
-            selected_icons.append(icon)
+        comma = icon.index(",")
+        if comma != -1:
+            if not icon[:comma] or not icon[comma+1:]:
+                print >> sys.stderr, "Error: Invalid icon name (%s) or UTF code (%s) provided" % (icon[:comma], icon[comma+1:])
+                sys.exit(1)
+            selected_icons.append({ icon[:comma] : u("\u" + icon[comma+1:]) })
+        elif icon in icons:
+            selected_icons.append({ icon : icons[icon] })
         else:
-            print >> sys.stderr, "Error: Unknown icon name (%s)" % (icon)
+            print >> sys.stderr, "Error: Unknown icon name (%s) and no UTF code provided" % (icon)
             sys.exit(1)
 
 for icon in selected_icons:
+    name = list(icon.keys())[0]
     if len(selected_icons) > 1:
         # Exporting multiple icons -- treat the filename option as name prefix
-        filename = (args.filename or "") + icon + ".png"
+        filename = (args.filename or "") + name + ".png"
     else:
         # Exporting one icon
         if args.filename:
             filename = args.filename
         else:
-            filename = icon + ".png"
+            filename = name + ".png"
 
-    print("Exporting icon \"%s\" as %s (%ix%i pixels)" %
-            (icon, filename, size, size))
+    print("Exporting icon \"%s\" as %s (%ix%i pixels)" % (icon, filename, size, size))
 
     export_icon(icon, size, filename, font, color)
 
